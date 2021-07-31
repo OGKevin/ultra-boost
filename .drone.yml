@@ -1,0 +1,89 @@
+---
+kind: pipeline
+type: docker
+name: builder
+
+clone:
+  depth: 1
+
+steps:
+- name: build
+  image: ghcr.io/ogkevin/ci-base:latest
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  commands:
+  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make ultra-boost
+
+- name: test
+  image: ghcr.io/ogkevin/ci-base:latest
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  - name: shared-tmp
+    path: /tmp
+  commands:
+  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make unit-tests
+
+- name: push-pr
+  image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: github_token
+  when:
+    event:
+    - pull_request
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  commands:
+  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make push-pr
+
+- name: push-main
+  image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: github_token
+  when:
+    branch:
+    - main
+    event:
+      exclude:
+      - pull_request
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  commands:
+  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make push
+
+- name: push-tag
+  image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: github_token
+  when:
+    event:
+    - tag
+  volumes:
+  - name: dockersock
+    path: /var/run/docker.sock
+  commands:
+  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make push-${DRONE_SEMVER}
+
+volumes:
+- name: dockersock
+  host:
+    path: /var/run/docker.sock
+- name: shared-tmp
+  host:
+    path: /tmp
+---
+kind: signature
+hmac: 5651ad172a1c0e0bc456c06ba81ec32fd0fbfc7129b5d6d24187d1d136d22fa9
+
+...
