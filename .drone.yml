@@ -84,6 +84,4 @@ volumes:
     path: /tmp
 ---
 kind: signature
-hmac: 5651ad172a1c0e0bc456c06ba81ec32fd0fbfc7129b5d6d24187d1d136d22fa9
-
-...
+hmac: e7a42618f3ed4d177bc2daf91bb4719ecc5f964df81987f26048b9ec40fa0bd9
