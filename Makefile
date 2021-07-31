@@ -151,7 +151,7 @@ push-%: login ## Pushes the ultra-boost images to the configured container regis
 	@$(MAKE) push IMAGE_TAG=$*
 
 push-pr: login
-	@$(MAKE) push IMAGE_TAG=pr-${IMAGE_TAG}
+	@$(MAKE) push IMAGE_TAG=pr-${DRONE_PULL_REQUEST}
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
