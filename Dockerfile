@@ -7,6 +7,11 @@ RUN  LATEST=$(wget -qO- "https://api.github.com/repos/docker/buildx/releases/lat
      chmod a+x buildx-$LATEST.linux-amd64 && \
      mkdir -p ~/.docker/cli-plugins && \
      mv buildx-$LATEST.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+RUN cd /tmp \
+     && wget https://github.com/digitalocean/doctl/releases/download/v1.62.0/doctl-1.62.0-linux-amd64.tar.gz \
+     && tar xf doctl-1.62.0-linux-amd64.tar.gz \
+     && chmod +x doctl \
+     && mv doctl /usr/local/bin
 
 # Application
 FROM golang:1.16 as ultra-boost-base

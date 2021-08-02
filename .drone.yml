@@ -1,6 +1,6 @@
 ---
 kind: pipeline
-type: docker
+type: kubernetes
 name: builder
 
 clone:
@@ -11,7 +11,7 @@ steps:
   image: ghcr.io/ogkevin/ci-base:latest
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
   - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost
@@ -20,7 +20,7 @@ steps:
   image: ghcr.io/ogkevin/ci-base:latest
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   - name: shared-tmp
     path: /tmp
   commands:
@@ -37,7 +37,7 @@ steps:
     - pull_request
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
   - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push-pr
@@ -55,35 +55,64 @@ steps:
       - pull_request
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
   - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push
-
-- name: push-tag
-  image: ghcr.io/ogkevin/ci-base:latest
-  environment:
-    GHCR_PASSWORD:
-      from_secret: github_token
-  when:
-    event:
-    - tag
-  volumes:
-  - name: dockersock
-    path: /var/run/docker.sock
-  commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make push-${DRONE_SEMVER}
+  - make push-${DRONE_BUILD_NUMBER}
 
 volumes:
 - name: dockersock
   host:
-    path: /var/run/docker.sock
+    path: /var/run
 - name: shared-tmp
   host:
     path: /tmp
+- name: kubeconfig
+  temp: {}
+
+
+---
+
+kind: pipeline
+name: deployer
+type: kubernetes
+
+steps:
+- name: get kube config
+  image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    DO_TOKEN:
+      from_secret: do_token
+  when:
+    branch:
+    - main
+    event:
+      exclude:
+      - pull_request
+  volumes:
+  - name: kubeconfig
+    path: /kubeconfig
+  commands:
+  - doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
+
+- name: deploy ultra-boost image
+  image: bitnami/kubectl:1.21
+  when:
+    branch:
+    - main
+    event:
+      exclude:
+      - pull_request
+  volumes:
+  - name: kubeconfig
+    path: /kubeconfig
+  commands:
+  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost apply -k kustomize
+  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost set image deployment/ultra-boost ultra-boost=ghcr.io/ogkevin/ultra-boost:${DRONE_BUILD_NUMBER} --record
+
 ---
 kind: signature
-hmac: 5651ad172a1c0e0bc456c06ba81ec32fd0fbfc7129b5d6d24187d1d136d22fa9
+hmac: 219e2e1bb1481a838186d98f38a0bc12b47b5c16916161c56b622f7a2ec790f2
 
 ...
