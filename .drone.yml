@@ -9,6 +9,9 @@ clone:
 steps:
 - name: pr
   image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: github_token
   volumes:
   - name: dockersock
     path: /var/run
@@ -83,6 +86,6 @@ volumes:
 
 ---
 kind: signature
-hmac: 392de050d5724e374a7661e904a03265adaf4997e3ce535dfbede55ca46ad3c5
+hmac: e00be2664f5f1fc677c5cdab0b0e1ad84e8b87e2a5b87bb367a619d240164cea
 
 ...
