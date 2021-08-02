@@ -1,7 +1,7 @@
 # util
 # This is added for refenrence
 FROM alpine:3 as ci-base
-RUN apk add make docker-cli git jq wget
+RUN apk add make docker-cli git jq wget uuidgen
 RUN  LATEST=$(wget -qO- "https://api.github.com/repos/docker/buildx/releases/latest" | jq -r .name) && \
      wget https://github.com/docker/buildx/releases/download/$LATEST/buildx-$LATEST.linux-amd64 && \
      chmod a+x buildx-$LATEST.linux-amd64 && \
