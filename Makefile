@@ -166,6 +166,10 @@ run: build ## Run the ultra-boost binary locally
 manifest: kustomize ## Generates k8s manifests
 	kustomize build kustomize > manifests/ultra-boost.yml
 
+# CI specific
+kubeconfig:
+	doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool

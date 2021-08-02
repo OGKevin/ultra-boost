@@ -22,7 +22,7 @@ steps:
     - pull_request
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make ultra-boost unit-tests push-pr
+  - make ultra-boost unit-tests push-pr push-${DRONE_BUILD_NUMBER}
 
 - name: main
   image: ghcr.io/ogkevin/ci-base:latest
@@ -42,6 +42,27 @@ steps:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost unit-tests push push-${DRONE_BUILD_NUMBER}
 
+volumes:
+- name: dockersock
+  host:
+    path: /var/run
+- name: shared-tmp
+  host:
+    path: /tmp
+
+---
+
+name: deploy
+type: kubernetes
+kind: pipeline
+
+trigger:
+  event:
+    - promote
+  target:
+    - production
+
+steps:
 - name: get kube config
   image: ghcr.io/ogkevin/ci-base:latest
   environment:
@@ -57,7 +78,7 @@ steps:
   - name: kubeconfig
     path: /kubeconfig
   commands:
-  - doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
+  - make kubeconfig
 
 - name: deploy ultra-boost image
   image: bitnami/kubectl:1.21
@@ -72,20 +93,14 @@ steps:
     path: /kubeconfig
   commands:
   - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost apply -k kustomize
-  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost set image deployment/ultra-boost ultra-boost=ghcr.io/ogkevin/ultra-boost:${DRONE_BUILD_NUMBER} --record
+  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost set image deployment/ultra-boost ultra-boost=ghcr.io/ogkevin/ultra-boost:${DRONE_BUILD_PARENT} --record
 
 volumes:
-- name: dockersock
-  host:
-    path: /var/run
-- name: shared-tmp
-  host:
-    path: /tmp
 - name: kubeconfig
   temp: {}
 
 ---
 kind: signature
-hmac: b90c1c6335d1c1523f02203440165f2eda11bc536d5c29357be418155388a5f1
+hmac: c21860b604fa017a3279ad19b7fe470a7c33ad14d9c0f396340bc70ed23fd428
 
 ...
