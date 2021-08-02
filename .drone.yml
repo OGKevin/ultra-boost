@@ -13,7 +13,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name b-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost
 
 - name: test
@@ -24,7 +24,7 @@ steps:
   - name: shared-tmp
     path: /tmp
   commands:
-  - docker buildx create --driver docker-container --name b-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make unit-tests
 
 - name: push-pr
@@ -39,7 +39,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name b-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push-pr
 
 - name: push-main
@@ -57,7 +57,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name b-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push
   - make push-${DRONE_BUILD_NUMBER}
 
@@ -105,6 +105,6 @@ volumes:
 
 ---
 kind: signature
-hmac: 370544baf0f1980f4bed6627f8d90ba069842364f0f2b868f113e0e20165287d
+hmac: f668c1282b2e002bdf6318919e5ac348b0404c6c711060ab543a43d693dddec5
 
 ...
