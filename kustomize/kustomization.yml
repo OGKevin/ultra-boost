@@ -1,0 +1,8 @@
+images:
+- name: ultra-boost
+  newName: ghcr.io/ogkevin/ultra-boost
+  newTag: 'None'
+
+resources:
+- deployment.yaml
+- service.yaml

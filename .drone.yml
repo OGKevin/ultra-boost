@@ -1,7 +1,7 @@
 ---
 kind: pipeline
-type: docker
-name: builder
+type: kubernetes
+name: default
 
 clone:
   depth: 1
@@ -11,20 +11,20 @@ steps:
   image: ghcr.io/ogkevin/ci-base:latest
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost
 
 - name: test
   image: ghcr.io/ogkevin/ci-base:latest
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   - name: shared-tmp
     path: /tmp
   commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make unit-tests
 
 - name: push-pr
@@ -37,9 +37,9 @@ steps:
     - pull_request
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push-pr
 
 - name: push-main
@@ -55,35 +55,56 @@ steps:
       - pull_request
   volumes:
   - name: dockersock
-    path: /var/run/docker.sock
+    path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push
+  - make push-${DRONE_BUILD_NUMBER}
 
-- name: push-tag
+- name: get kube config
   image: ghcr.io/ogkevin/ci-base:latest
   environment:
-    GHCR_PASSWORD:
-      from_secret: github_token
+    DO_TOKEN:
+      from_secret: do_token
   when:
+    branch:
+    - main
     event:
-    - tag
+      exclude:
+      - pull_request
   volumes:
-  - name: dockersock
-    path: /var/run/docker.sock
+  - name: kubeconfig
+    path: /kubeconfig
   commands:
-  - docker buildx create --driver docker-container --name locall --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make push-${DRONE_SEMVER}
+  - doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
+
+- name: deploy ultra-boost image
+  image: bitnami/kubectl:1.21
+  when:
+    branch:
+    - main
+    event:
+      exclude:
+      - pull_request
+  volumes:
+  - name: kubeconfig
+    path: /kubeconfig
+  commands:
+  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost apply -k kustomize
+  - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost set image deployment/ultra-boost ultra-boost=ghcr.io/ogkevin/ultra-boost:${DRONE_BUILD_NUMBER} --record
 
 volumes:
 - name: dockersock
   host:
-    path: /var/run/docker.sock
+    path: /var/run
 - name: shared-tmp
   host:
     path: /tmp
+- name: kubeconfig
+  temp: {}
+
 ---
 kind: signature
-hmac: 5651ad172a1c0e0bc456c06ba81ec32fd0fbfc7129b5d6d24187d1d136d22fa9
+hmac: f668c1282b2e002bdf6318919e5ac348b0404c6c711060ab543a43d693dddec5
 
 ...

@@ -1,0 +1,12 @@
+# bare min service
+
+apiVersion: v1
+kind: Service
+metadata:
+ name: ultra-boost
+spec:
+ selector:
+  app: ultra-boost
+ ports:
+ - port: 8080
+ type: ClusterIP

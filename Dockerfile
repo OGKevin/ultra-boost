@@ -1,12 +1,17 @@
 # util
 # This is added for refenrence
 FROM alpine:3 as ci-base
-RUN apk add make docker-cli git jq wget
+RUN apk add make docker-cli git jq wget uuidgen
 RUN  LATEST=$(wget -qO- "https://api.github.com/repos/docker/buildx/releases/latest" | jq -r .name) && \
      wget https://github.com/docker/buildx/releases/download/$LATEST/buildx-$LATEST.linux-amd64 && \
      chmod a+x buildx-$LATEST.linux-amd64 && \
      mkdir -p ~/.docker/cli-plugins && \
      mv buildx-$LATEST.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+RUN cd /tmp \
+     && wget https://github.com/digitalocean/doctl/releases/download/v1.62.0/doctl-1.62.0-linux-amd64.tar.gz \
+     && tar xf doctl-1.62.0-linux-amd64.tar.gz \
+     && chmod +x doctl \
+     && mv doctl /usr/local/bin
 
 # Application
 FROM golang:1.16 as ultra-boost-base
