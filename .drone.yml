@@ -1,13 +1,51 @@
 ---
 kind: pipeline
 type: kubernetes
-name: default
+name: main
+
+trigger:
+  branch:
+  - main
+  event:
+  - push
 
 clone:
   depth: 1
 
 steps:
-- name: pr
+- name: build test and push
+  # combine these steps for better build kit cache
+  image: ghcr.io/ogkevin/ci-base:latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: github_token
+  volumes:
+  - name: dockersock
+    path: /var/run
+  commands:
+  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - make ultra-boost unit-tests push push-${DRONE_BUILD_NUMBER}
+
+volumes:
+- name: dockersock
+  host:
+    path: /var/run
+- name: shared-tmp
+  host:
+    path: /tmp
+
+---
+kind: pipeline
+type: kubernetes
+name: pr
+
+trigger:
+  event:
+  - pull_request
+
+steps:
+- name: build test and push
+  # combine these steps for better build kit cache
   image: ghcr.io/ogkevin/ci-base:latest
   environment:
     GHCR_PASSWORD:
@@ -17,30 +55,9 @@ steps:
     path: /var/run
   - name: shared-tmp
     path: /tmp
-  when:
-    event:
-    - pull_request
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost unit-tests push-pr push-${DRONE_BUILD_NUMBER}
-
-- name: main
-  image: ghcr.io/ogkevin/ci-base:latest
-  environment:
-    GHCR_PASSWORD:
-      from_secret: github_token
-  when:
-    branch:
-    - main
-    event:
-      exclude:
-      - pull_request
-  volumes:
-  - name: dockersock
-    path: /var/run
-  commands:
-  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make ultra-boost unit-tests push push-${DRONE_BUILD_NUMBER}
 
 volumes:
 - name: dockersock
@@ -101,6 +118,6 @@ volumes:
 
 ---
 kind: signature
-hmac: c21860b604fa017a3279ad19b7fe470a7c33ad14d9c0f396340bc70ed23fd428
+hmac: 9d964af2ca9ad5994e860f49fe908e080d6806d0223d7ea25cba66643c6f5688
 
 ...

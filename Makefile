@@ -170,6 +170,10 @@ manifest: kustomize ## Generates k8s manifests
 kubeconfig:
 	doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
 
+# Deployment
+deploy-prd: ## promote drone build to prd by specifying BUILD env with build nr. e.g. make deploy-prd BUILD=1
+	drone build promote OGKevin/ultra-boost ${BUILD} production
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool
