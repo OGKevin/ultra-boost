@@ -68,4 +68,6 @@ spec:
        value: https
      - name: DRONE_RPC_SECRET
        # This is manually updated by hand after deployment
+       # Proper setup would store this in vault and use vault injector
+       # to retrieve this value.
        value: super-duper-secret
