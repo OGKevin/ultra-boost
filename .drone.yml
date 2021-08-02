@@ -22,7 +22,7 @@ steps:
     - pull_request
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make build unit-tests push-pr
+  - make ultra-boost unit-tests push-pr
 
 - name: main
   image: ghcr.io/ogkevin/ci-base:latest
@@ -40,7 +40,7 @@ steps:
     path: /var/run
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make build unit-tests push push-${DRONE_BUILD_NUMBER}
+  - make ultra-boost unit-tests push push-${DRONE_BUILD_NUMBER}
 
 - name: get kube config
   image: ghcr.io/ogkevin/ci-base:latest
@@ -86,6 +86,6 @@ volumes:
 
 ---
 kind: signature
-hmac: e00be2664f5f1fc677c5cdab0b0e1ad84e8b87e2a5b87bb367a619d240164cea
+hmac: b90c1c6335d1c1523f02203440165f2eda11bc536d5c29357be418155388a5f1
 
 ...
