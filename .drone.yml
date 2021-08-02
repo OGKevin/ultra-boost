@@ -13,7 +13,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name build-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name build-"$(uuidgen -t)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make ultra-boost
 
 - name: test
@@ -24,7 +24,7 @@ steps:
   - name: shared-tmp
     path: /tmp
   commands:
-  - docker buildx create --driver docker-container --name test-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name test-"$(uuidgen -t)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make unit-tests
 
 - name: push-pr
@@ -39,7 +39,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name push-pr-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name push-pr-"$(uuidgen -t)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push-pr
 
 - name: push-main
@@ -57,7 +57,7 @@ steps:
   - name: dockersock
     path: /var/run
   commands:
-  - docker buildx create --driver docker-container --name push-main-"$(date +%s)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
+  - docker buildx create --driver docker-container --name push-main-"$(uuidgen -t)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
   - make push
   - make push-${DRONE_BUILD_NUMBER}
 
@@ -105,6 +105,6 @@ volumes:
 
 ---
 kind: signature
-hmac: 1bbaddf18e2e7fc070a13d3f0fc8e13650b92779f6f90afd309d0086045ae02d
+hmac: b2a5c56e5d147a0d984df8f1ac7a879ca7853b1d5d6ab655d9a070f2b23390a0
 
 ...
