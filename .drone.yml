@@ -1,7 +1,7 @@
 ---
 kind: pipeline
 type: kubernetes
-name: builder
+name: default
 
 clone:
   depth: 1
@@ -61,24 +61,6 @@ steps:
   - make push
   - make push-${DRONE_BUILD_NUMBER}
 
-volumes:
-- name: dockersock
-  host:
-    path: /var/run
-- name: shared-tmp
-  host:
-    path: /tmp
-- name: kubeconfig
-  temp: {}
-
-
----
-
-kind: pipeline
-name: deployer
-type: kubernetes
-
-steps:
 - name: get kube config
   image: ghcr.io/ogkevin/ci-base:latest
   environment:
@@ -111,8 +93,18 @@ steps:
   - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost apply -k kustomize
   - kubectl --kubeconfig /kubeconfig/conf.yml -n ultra-boost set image deployment/ultra-boost ultra-boost=ghcr.io/ogkevin/ultra-boost:${DRONE_BUILD_NUMBER} --record
 
+volumes:
+- name: dockersock
+  host:
+    path: /var/run
+- name: shared-tmp
+  host:
+    path: /tmp
+- name: kubeconfig
+  temp: {}
+
 ---
 kind: signature
-hmac: a998a5bb2ac168bcffbf57a2e2b7441e7348464595d98c8164824329c28a4fa6
+hmac: 1bbaddf18e2e7fc070a13d3f0fc8e13650b92779f6f90afd309d0086045ae02d
 
 ...
