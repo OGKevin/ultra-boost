@@ -7,42 +7,21 @@ clone:
   depth: 1
 
 steps:
-- name: build
-  image: ghcr.io/ogkevin/ci-base:latest
-  volumes:
-  - name: dockersock
-    path: /var/run
-  commands:
-  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make ultra-boost
-
-- name: test
+- name: pr
   image: ghcr.io/ogkevin/ci-base:latest
   volumes:
   - name: dockersock
     path: /var/run
   - name: shared-tmp
     path: /tmp
-  commands:
-  - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make unit-tests
-
-- name: push-pr
-  image: ghcr.io/ogkevin/ci-base:latest
-  environment:
-    GHCR_PASSWORD:
-      from_secret: github_token
   when:
     event:
     - pull_request
-  volumes:
-  - name: dockersock
-    path: /var/run
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make push-pr
+  - make build unit-tests push-pr
 
-- name: push-main
+- name: main
   image: ghcr.io/ogkevin/ci-base:latest
   environment:
     GHCR_PASSWORD:
@@ -58,8 +37,7 @@ steps:
     path: /var/run
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make push
-  - make push-${DRONE_BUILD_NUMBER}
+  - make build unit-tests push push-${DRONE_BUILD_NUMBER}
 
 - name: get kube config
   image: ghcr.io/ogkevin/ci-base:latest
@@ -105,6 +83,6 @@ volumes:
 
 ---
 kind: signature
-hmac: f668c1282b2e002bdf6318919e5ac348b0404c6c711060ab543a43d693dddec5
+hmac: 392de050d5724e374a7661e904a03265adaf4997e3ce535dfbede55ca46ad3c5
 
 ...
