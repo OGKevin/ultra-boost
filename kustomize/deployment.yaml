@@ -1,5 +1,7 @@
 # bare min deployment
 
+# anti pod affinity, resources request and limits and hpa are important things that are missing
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,6 +23,12 @@ spec:
      image: ultra-boost
      # For testing purposes, Always. Else IfNotPresent. In prod IfNotPresent should be used.
      imagePullPolicy: Always
+     readinessProbe:
+      httpGet:
+       port: 8080
+     livenessProbe:
+      httpGet:
+       port: 8080
    restartPolicy: Always
  selector:
   matchLabels:

@@ -6,21 +6,27 @@
 
 ## Tech used
 
-* Simple go application that only answers to `/metrics` (assume that this is a simple e-commerce app)
+* Simple go application that only answers to `/metrics`, 
+  `/-/ready` and `/-/healthy` (assume that this is a simple e-commerce app)
 * Drone CI: https://www.drone.io --> https://drone.ogkevin.nl/OGKevin/ultra-boost
 * Docker with buildkit: https://docs.docker.com/develop/develop-images/build_enhancements/ main reason is for cache
 * Terraform to provision cluster
+* Kustomize to generate k8s manifests
 
 ## Pipeline implementation
 
-Drone CI is being used as the pipeline instead of Jenkins. This is due to me having more experience with
-Drone than with Jenkins (and already having Drone server deployed). However, the principles and Ideas should be the same.
+Drone CI is being used as the pipeline instead of Jenkins. This is due to me having more
+experience with Drone than with Jenkins (and already having Drone server deployed). 
+However, the principles and Ideas should be the same.
 
-On each Pull request, the tests and build must pass for it to be merged. PR builds will also be pushed.
+On each Pull request, the tests and build must pass for it to be merged.
+PR builds will also be pushed. These can be used for review apps (This is not 
+implemented in this task).
 On main branch, each commit will be tested, build, and pushed
-Drone build number, short commit hash, and pr number are used to create docker build tags.
-Automatic deployment is disabled due to not having an automatic reversal. This means that while testing,
-building, and pushing are automated, the actual trigger for deployment is still manual.
+Drone build number, short commit hash, and pr number are used to tag the images.
+Automatic deployment is disabled due to not having an automatic reversal.
+This means that while testing, building, and pushing are automated,
+the actual trigger for deployment is still manual.
 However, this is a simple command:
 
 ```
@@ -29,6 +35,12 @@ make deploy-prd BUILD=86
 
 Where `BUILD` is the drone-ci build number. What is currently deployed can be viewed
 here: https://drone.ogkevin.nl/OGKevin/ultra-boost/deployments and on the `builds` tab.
+
+k8s has build in features to enable HA deployment without downtime.
+This in combination with anti pod affinity and disruption budgets
+should enable k8s to perform rolling updates without downtime.
+
+k8s HA rolling update is explained here: https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/
 
 ### Automatic reversal
 
@@ -50,24 +62,26 @@ expected.
 * If a % of an error budget is burned due to deployment, application X promotes previous build back to production
   and notifies via Slack/Teams that application is broken.
 
-k8s has build in features to enable HA deployment without downtime. This in combination with anti pod affinity and
-disruption budgets should enable k8s to perform rolling updates without downtime.
-
-In this perfect world, GitHub deployments could be used to indicate what has been deployed to an environment. As Drone-ci
-does not have a fully automatic way to indicate this.
+In this perfect world, GitHub deployments could be used to indicate what has been deployed to an environment.
+As Drone-ci does not have a fully automatic way to indicate this. Or a tool such as
+[ArgoCD](https://argoproj.github.io/argo-cd/) can be used.
 
 ### Deployments of hotfixes and new features
 
 Hotfixes in most cases have small diffs, are tested in staging and comes with test cases for the bugs that it fixes.
 Due to these characteristics (and auto-revert or human revert) promoting the hot fix directly is ok.
 
-New features are in most cases "scarier" as it's something new that has never ran in production yet. This is where
-canary deployments can be of help. By having 2 version of produciton running, one normal and one with the new feature,
-you can route a small percentage of traffic to the version with the new feature and see if everything is working as expected.
+New features are in most cases "scarier" as it's something new that has never ran in production. This is where
+canary deployments can be of help. By having 2 version of production running, one normal and one with the new feature,
+you can route a small percentage of traffic to the version with the new feature and see if everything is
+working as expected. Based on the result of this experiment, you can then decide to continue the roll-out or not.
+
+In both cases however, review apps can also help with verification if everything is working as expected
+before it reaches production.
 
 ## Building of the image
 
-The process used to build images is inspired by the way Talos-systems does it.
+The process used to build images is inspired by the way [Talos-systems](https://github.com/talos-systems/talos) does it.
 By utilizing Docker BuildKit and its cache. You have fast repeatable and reproducible builds.
 The only drawback is that inside CI, we have to use dind(docker in docker) if we want to strictly use k8s runners.
 This is also the reason why in CI, there is 1 step that executes build, test and push so that the cache is re-used.
@@ -81,9 +95,18 @@ There are 3 solutions to solve this without research:
 * Use a virtual machine as a runner.
 * Move away from BuildKit and use "plain ci" with volume sharing as caching solution.
 
+## Debugging
+
+Every engineer has their own preferred way on how they would like to debug applications. The application is
+not restricted by OS. Engineers can pretty much chose how they want to debug.
+E.g. by using their IDE, using remote debug etc.
+
+If they would like to debug inside the container using remote debug, a new `debug` target must be added to
+the Dockerfile that either builds a debug binary or runs the code live using [Delve](https://github.com/go-delve/delve).
+
 ## Makefile
 
-The Makefile is the main way of interacting with this project. 
+The Makefile is the main way of interacting with this project and is also heavily inspired by Talos.
 
 Most of the commands are self-explanatory.
 
@@ -95,17 +118,17 @@ Most of the commands are self-explanatory.
 
 ## Monitoring
 
-This application exposes metrics at `/metrics` in prometheus format. Metrics/SLI's that should be exposed for an e-commerce
-apps are:
+This application exposes metrics at `/metrics` in prometheus format. Metrics/SLI's that
+should be exposed for a web app are:
 * Success and failure of incoming and outgoing http requests
 * Application errors instrumented by category/task/subsystem etc
 * Throughput in RPS
-* Resource usage for auto scaling purposes
+* Resource usage for auto-scaling purposes
 * Time it takes to handle requests (latency)
-* Time it takes to execute (background) tasks
+* Time it takes to execute (background) tasks (freshness)
 
-Once prometheus collects all this info Error budged, alerts and dashboards can be created by hand or 
-with a tool such as: https://github.com/slok/sloth
+Once prometheus collects all this info Error budged, alerts and dashboards can be
+created by hand or with a tool such as: https://github.com/slok/sloth
 
 The following SLO's could be used:
 * 99.999% of incoming http requests should succeed
@@ -113,15 +136,31 @@ The following SLO's could be used:
 * Freshness of background jobs is < 2m
 * 99.999% uptime
 
-Alert shall be defined based on burning windows and tools such as Alertmanager and PagerDuty can be used
-to deliver such alert to a human.
+Alert shall be defined based on burning windows and tools such as
+Alertmanager and PagerDuty can be used to deliver such alert to a human.
+
+The reason for using the Prometheus stack is based on having experience with
+these tools.
+
+Internal and external tracing can also lead to good observability. Tools like
+Jaeger can help for these cases. However, this is not crucial for SLO's. As
+all the SLI's mentioned above are retrievable via Prometheus.
 
 ## Trade off / Risks
 
-* The current implementation of the pipline requires a person to trigger the deployment to prd next to pushing a commit.
-This is due to the missing auto-revert.
+* The current implementation of the pipeline requires a person to trigger the deployment to prd next to pushing a commit. 
+  This is due to the missing auto-revert.
 * On each commit, even if application code is not changed, a new build and test is done. This can be prevented.
-* Everyone who has access to the repo could trigger a deployment. e.g. Someone could only have access to make PR's
-or read-only mode etc. This can be fixed by using something like ArgoCD.
-* k8s centennials are stored on CI side. By using something like ArgoCD eliminates the need of storing k8s credentials
-in CI.
+* Everyone who has access to the repo could trigger a deployment. e.g. Someone could only have access to make PR's 
+  or read-only etc. This can be fixed by using something like ArgoCD.
+* k8s centennials are stored on CI side. By using something like ArgoCD eliminates the need of storing k8s credentials 
+  in CI.
+* Automated review apps is not easily achievable without an application managing the environment. E.g. automatically 
+  creating a namespace "ultra-boost-pr-${PR_NR}" and afterwards deleting it when it's merged. It's not achievable with
+  plain Drone ci as there is no way of knowing which MR just got merged to clean up after.
+* The lack of Kustomzie binary in CI requires CI to do 2 deployemnts. One to deploy the whole manifest
+  and another one to update the image. This can also easily be solved by including kustomize binary.
+
+## Diagram
+
+![](./docs/diagram.png)
