@@ -11,7 +11,7 @@
 * Drone CI: https://www.drone.io --> https://drone.ogkevin.nl/OGKevin/ultra-boost
 * Docker with buildkit: https://docs.docker.com/develop/develop-images/build_enhancements/ main reason is for cache
 * Terraform to provision cluster
-* Kustomize to generate k8s manifests
+* Build in Kustomize to generate k8s manifests
 
 ## Pipeline implementation
 
@@ -37,10 +37,16 @@ Where `BUILD` is the drone-ci build number. What is currently deployed can be vi
 here: https://drone.ogkevin.nl/OGKevin/ultra-boost/deployments and on the `builds` tab.
 
 k8s has build in features to enable HA deployment without downtime.
-This in combination with anti pod affinity and disruption budgets
+This in combination with anti pod affinity, disruption budgets and good probes
 should enable k8s to perform rolling updates without downtime.
 
 k8s HA rolling update is explained here: https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/
+
+On the application side:
+* It needs to be stateless
+* It needs to implement a liveness probe that boots up at the start and reports that its alive.
+* It needs to implement a readiness probe that indicates when it is ready to handle traffic.
+* A reasonably fast time to reach ready state
 
 ### Automatic reversal
 
@@ -76,14 +82,15 @@ canary deployments can be of help. By having 2 version of production running, on
 you can route a small percentage of traffic to the version with the new feature and see if everything is
 working as expected. Based on the result of this experiment, you can then decide to continue the roll-out or not.
 
-In both cases however, review apps can also help with verification if everything is working as expected
+In both cases, review apps can also help with verification if everything is working as expected
 before it reaches production.
 
 ## Building of the image
 
 The process used to build images is inspired by the way [Talos-systems](https://github.com/talos-systems/talos) does it.
 By utilizing Docker BuildKit and its cache. You have fast repeatable and reproducible builds.
-The only drawback is that inside CI, we have to use dind(docker in docker) if we want to strictly use k8s runners.
+The only drawback is that inside CI, dind(docker in docker) needs to he used if the requirement is to run runners also
+on k8s.
 This is also the reason why in CI, there is 1 step that executes build, test and push so that the cache is re-used.
 
 More research into this could potentially lead to a solution where the steps
@@ -95,10 +102,12 @@ There are 3 solutions to solve this without research:
 * Use a virtual machine as a runner.
 * Move away from BuildKit and use "plain ci" with volume sharing as caching solution.
 
+All the above mentioned solutions have drawbacks that I do not like.
+
 ## Debugging
 
 Every engineer has their own preferred way on how they would like to debug applications. The application is
-not restricted by OS. Engineers can pretty much chose how they want to debug.
+not restricted by OS / OS specific, which means that engineers can pretty much chose how they want to debug.
 E.g. by using their IDE, using remote debug etc.
 
 If they would like to debug inside the container using remote debug, a new `debug` target must be added to
@@ -127,8 +136,8 @@ should be exposed for a web app are:
 * Time it takes to handle requests (latency)
 * Time it takes to execute (background) tasks (freshness)
 
-Once prometheus collects all this info Error budged, alerts and dashboards can be
-created by hand or with a tool such as: https://github.com/slok/sloth
+Once prometheus collects all this info, Error budged, alerts and dashboards can be
+created by hand or preferably with a tool such as: https://github.com/slok/sloth
 
 The following SLO's could be used:
 * 99.999% of incoming http requests should succeed
@@ -144,23 +153,25 @@ these tools.
 
 Internal and external tracing can also lead to good observability. Tools like
 Jaeger can help for these cases. However, this is not crucial for SLO's. As
-all the SLI's mentioned above are retrievable via Prometheus.
+all the SLI's mentioned above are retrievable via Prometheus. The data is certainly
+still useful for investigations, improvements etc.
 
 ## Trade off / Risks
 
 * The current implementation of the pipeline requires a person to trigger the deployment to prd next to pushing a commit. 
   This is due to the missing auto-revert.
 * On each commit, even if application code is not changed, a new build and test is done. This can be prevented.
-* Everyone who has access to the repo could trigger a deployment. e.g. Someone could only have access to make PR's 
-  or read-only etc. This can be fixed by using something like ArgoCD.
 * k8s centennials are stored on CI side. By using something like ArgoCD eliminates the need of storing k8s credentials 
   in CI.
 * Automated review apps is not easily achievable without an application managing the environment. E.g. automatically 
   creating a namespace "ultra-boost-pr-${PR_NR}" and afterwards deleting it when it's merged. It's not achievable with
   plain Drone ci as there is no way of knowing which MR just got merged to clean up after.
-* The lack of Kustomzie binary in CI requires CI to do 2 deployemnts. One to deploy the whole manifest
-  and another one to update the image. This can also easily be solved by including kustomize binary.
+* The lack of Kustomzie binary in CI requires CI to do 2 deployments. One to deploy the whole manifest
+  and another one to update the image. This can also easily be solved by including kustomize binary, ArgoCD or
+  helm with variables
 
 ## Diagram
+
+_Incident should also be annotated in grafana._
 
 ![](./docs/diagram.png)
