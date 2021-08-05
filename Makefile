@@ -168,7 +168,7 @@ manifest: kustomize ## Generates k8s manifests
 
 # CI specific
 kubeconfig:
-	doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show dev-cluster > /kubeconfig/conf.yml
+	doctl -t ${DO_TOKEN} kubernetes cluster kubeconfig show cluster > /kubeconfig/conf.yml
 
 # Deployment
 deploy-prd: ## promote drone build to prd by specifying BUILD env with build nr. e.g. make deploy-prd BUILD=1
