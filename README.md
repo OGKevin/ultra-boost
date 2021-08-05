@@ -7,7 +7,7 @@
 ## Tech used
 
 * Simple go application that only answers to `/metrics`, 
-  `/-/ready` and `/-/healthy` (assume that this is a simple e-commerce app)
+  `/-/ready` and `/-/healthy` (assume that this is a simple web app)
 * Drone CI: https://www.drone.io --> https://drone.ogkevin.nl/OGKevin/ultra-boost
 * Docker with buildkit: https://docs.docker.com/develop/develop-images/build_enhancements/ main reason is for cache
 * Terraform to provision cluster
