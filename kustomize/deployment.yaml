@@ -25,10 +25,12 @@ spec:
      imagePullPolicy: IfNotPresent
      readinessProbe:
       httpGet:
+       path: /-/ready
        port: 8080
      livenessProbe:
       httpGet:
        port: 8080
+       path: /-/healthy
    restartPolicy: Always
  selector:
   matchLabels:
