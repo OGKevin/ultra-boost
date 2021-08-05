@@ -43,7 +43,6 @@ ENTRYPOINT ["/ultra-boost"]
 
 # test
 FROM builder-ultra-boost AS unit-tests-builder
-# Preferably, we can use a script here to add all the test files, but for sake of simplicity and demo this is enough.
 COPY main_test.go .
 
 FROM unit-tests-builder AS unit-tests
