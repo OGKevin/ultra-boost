@@ -1,0 +1,10 @@
+kustomize
+docs
+manifests
+terraform
+tmp
+vendor
+README.md
+.drone.yml
+Dockerfile
+Makefile
