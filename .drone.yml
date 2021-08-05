@@ -57,7 +57,7 @@ steps:
     path: /tmp
   commands:
   - docker buildx create --driver docker-container --name b-"$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10)" --buildkitd-flags '--allow-insecure-entitlement security.insecure' --use
-  - make ultra-boost unit-tests push-pr push-${DRONE_BUILD_NUMBER}
+  - make ultra-boost unit-tests push push-pr push-${DRONE_BUILD_NUMBER}
 
 volumes:
 - name: dockersock
@@ -118,6 +118,6 @@ volumes:
 
 ---
 kind: signature
-hmac: 9d964af2ca9ad5994e860f49fe908e080d6806d0223d7ea25cba66643c6f5688
+hmac: a9b1e8ced4065417c9a9ecf46f3c1291de52bd4daf7f7a65f22804fd456ed86a
 
 ...
